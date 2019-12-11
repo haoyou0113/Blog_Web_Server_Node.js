@@ -13,7 +13,7 @@ function exec(sql) {
         return;
       }
       resolve(result);
-      console.log('result', result);
+      // console.log('result', result);
     });
   });
   return promise;

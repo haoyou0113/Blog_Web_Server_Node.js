@@ -56,11 +56,22 @@ const serverHandle = (req, res) => {
     }
 
     // 处理user路由
-    const userData = handleUserRouter(req, res);
-    if (userData) {
-      res.end(JSON.stringify(userData));
+    // const userData = handleUserRouter(req, res);
+    // if (userData) {
+    //   res.end(JSON.stringify(userData));
+    //   return;
+    // }
+
+    const userResult = handleUserRouter(req, res);
+    if (userResult) {
+      console.log('userResult', userResult);
+      userResult.then(userDate => {
+        res.end(JSON.stringify(userDate));
+      });
+
       return;
     }
+
     //   无路由返回404
     res.writeHead(404, { 'Content-type': 'text/plain' });
     res.write('404 Not Found\n');
