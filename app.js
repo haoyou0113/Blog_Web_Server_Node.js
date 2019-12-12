@@ -1,7 +1,15 @@
 const querystring = require('querystring');
 const handleBlogRouter = require('./src/router/blog');
 const handleUserRouter = require('./src/router/user');
+// session 数据
+const SESSION_DATA = {};
 // 处理postdata
+const getCookieExpires = () => {
+  const d = new Date();
+  d.setTime(d.getTime() + 24 * 60 * 60 * 1000);
+  console.log('d.toGMTSring  : ', d.toGMTString());
+  return d.toGMTString();
+};
 const getPostData = req => {
   const promise = new Promise((resolve, reject) => {
     if (req.method !== 'POST') {
@@ -37,6 +45,39 @@ const serverHandle = (req, res) => {
 
   // 解析 query
   req.query = querystring.parse(url.split('?')[1]);
+  // 解析cookie
+  req.cookie = {};
+  const cookieStr = req.headers.cookie || '';
+  cookieStr.split(';').forEach(item => {
+    // 使用;分割cookie 循环遍历
+    if (!item) {
+      return;
+    }
+    // 分别取出arr中的首末项 key val
+    const arr = item.split('=');
+    const key = arr[0].trim();
+    const val = arr[1].trim();
+    req.cookie[key] = val;
+  });
+  // console.log(arr[0]);
+  console.log('req.cookie is', req.cookie);
+
+  // 解析session
+  let needSetCookie = false;
+  let userId = req.cookie.userid;
+  if (userId) {
+    if (!SESSION_DATA[userId]) {
+      SESSION_DATA[userId] = {};
+      // 没有值得话初始化一个空对象
+      // 第二次登录后已经有userid
+    }
+  } else {
+    needSetCookie = true;
+    userId = `${Date.now()}_${Math.random()}`;
+    SESSION_DATA[userId] = {};
+    // 如果没有userId 创建随机的userId防止重复
+  }
+  req.session = SESSION_DATA[userId];
   // 处理post data
   getPostData(req).then(postData => {
     req.body = postData;
@@ -47,9 +88,15 @@ const serverHandle = (req, res) => {
     //   res.end(JSON.stringify(blogData));
     //   return;
     // }
-    console.log('blogreuslt', blogResult);
+    // console.log('blogreuslt', blogResult);
     if (blogResult) {
       blogResult.then(blogData => {
+        if (needSetCookie) {
+          res.setHeader(
+            'Set-Cookie',
+            `userid=${userId}; path=/; httpOnly; expires=${getCookieExpires()} `
+          );
+        }
         res.end(JSON.stringify(blogData));
       });
       return;
@@ -64,8 +111,14 @@ const serverHandle = (req, res) => {
 
     const userResult = handleUserRouter(req, res);
     if (userResult) {
-      console.log('userResult', userResult);
+      // console.log('userResult', userResult);
       userResult.then(userDate => {
+        if (needSetCookie) {
+          res.setHeader(
+            'Set-Cookie',
+            `userid=${userId}; path=/; httpOnly; expires=${getCookieExpires()} `
+          );
+        }
         res.end(JSON.stringify(userDate));
       });
 
