@@ -6,6 +6,15 @@ const {
   delBlog
 } = require('../controller/blog');
 const { SuccessModel, ErrorModel } = require('../model/resModel');
+
+// login check
+const loginCheck = req => {
+  console.log('12', req.session);
+  if (!req.session.username) {
+    return Promise.resolve(new ErrorModel('Not logged in'));
+  }
+};
+
 const handleBlogRouter = (req, res) => {
   const method = req.method;
   const id = req.query.id;
@@ -15,12 +24,23 @@ const handleBlogRouter = (req, res) => {
 
   // 获取博客列表
   if (method === 'GET' && req.path === '/api/blog/list') {
-    const author = req.query.author || '';
+    let author = req.query.author || '';
     const keyword = req.query.keyword || '';
-    // const listData = getList(author, keyword);
-    // return new SuccessModel(listData);
+    // const listData = getList(author, keyword)
+    // return new SuccessModel(listData)
+
+    if (req.query.isadmin) {
+      // 管理员界面
+      const loginCheckResult = loginCheck(req);
+      if (loginCheckResult) {
+        // 未登录
+        return loginCheckResult;
+      }
+      // 强制查询自己的博客
+      author = req.session.username;
+    }
+
     const result = getList(author, keyword);
-    // console.log(result);
     return result.then(listData => {
       return new SuccessModel(listData);
     });
@@ -39,17 +59,29 @@ const handleBlogRouter = (req, res) => {
     // const data = newBlog(blogData);
     // return new SuccessModel(data);
     // const author = 'leon';
-    req.body.author = 'leon';
+
+    const loginCheckResult = loginCheck(req);
+    if (loginCheckResult) {
+      //not login
+      return loginCheckResult;
+    }
+
+    req.body.author = req.session.username;
     // author visual data
-    console.log(req.body);
+    // console.log(req.body);
     const result = newBlog(req.body);
-    console.log('result', result);
+    // console.log('result', result);
     return result.then(data => {
       return new SuccessModel(data);
     });
   }
   //   更新博客
   if (method === 'POST' && req.path === '/api/blog/update') {
+    const loginCheckResult = loginCheck(req);
+    if (loginCheckResult) {
+      //not login
+      return loginCheckResult;
+    }
     const result = updateBlog(id, req.body);
     return result.then(val => {
       if (val) {
@@ -61,9 +93,14 @@ const handleBlogRouter = (req, res) => {
   }
   //   删除博客
   if (method === 'POST' && req.path === '/api/blog/delete') {
-    const author = 'leon'; //假数据
+    const loginCheckResult = loginCheck(req);
+    if (loginCheckResult) {
+      //not login
+      return loginCheckResult;
+    }
+    const author = req.session.username;
     const result = delBlog(id, author);
-    console.log('result', result);
+    // console.log('result', result);
     return result.then(val => {
       if (val) {
         return new SuccessModel(val);
