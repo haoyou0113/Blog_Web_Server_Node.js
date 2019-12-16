@@ -22,5 +22,6 @@ function exec(sql) {
 // con.end(); 保持链接状态 需要多次执行exec
 
 module.exports = {
-  exec
+  exec,
+  escape: mysql.escape
 };
